@@ -806,8 +806,8 @@ def _revoke_restore_code_ui():
     for i, c in enumerate(codes, 1):
         print(f"  {i}. {c['code']} – {c['target_username']} – {c['backup_filename']}")
     ch = input(f"\nCode to revoke (1-{len(codes)}): ")
-    if not validate_restore_code_input(ch):
-        print("\nInvalid code format."); pause(); return
+    if not validate_number_input(ch, len(codes)):
+        print("\nInvalid."); pause(); return
     try:
         sel = codes[int(ch) - 1]
     except (ValueError, IndexError):
@@ -837,14 +837,14 @@ def view_my_profile_ui():
 def update_my_password_ui():
     clear(); header("UPDATE PASSWORD"); user_info()
     print("\nRequirements: 12-50 chars, lowercase + uppercase + digit + special")
+    u = get_current_user()
+    if not u:
+        return
     cur_pw = input("\nCurrent password: ")
-    if not validate_password_input(cur_pw, get_current_user()["username"]):
-        print("\n  Incorrect password."); pause(); return
-    
     if not cur_pw:
         print("\n  Cannot be empty."); pause(); return
-
-    u = get_current_user()
+    if not validate_password_input(cur_pw, u["username"]):
+        print("\n  Incorrect password."); pause(); return
     from database import get_connection, verify_password as db_verify
     conn = get_connection()
     c = conn.cursor()
@@ -921,6 +921,8 @@ def force_password_change():
         logout(); pause(); return
 
     u = get_current_user()
+    if not u:
+        return
     from database import get_connection, hash_password as db_hash
     try:
         conn = get_connection()

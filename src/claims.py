@@ -44,7 +44,7 @@ def _has_salary_batch(claim_id):
     c.execute("SELECT salary_batch FROM claims WHERE id = ?", (claim_id,))
     row = c.fetchone()
     conn.close()
-    return row is not None and row[0] not in (None, "")
+    return row is not None and row[0] is not None
 
 
 def _validate_claim_type(claim_type):
@@ -175,6 +175,9 @@ def update_claim(claim_id, **updates):
 
     fields, params = [], []
     for field, value in updates.items():
+        if field not in _FIELD_VALIDATORS:
+            conn.close()
+            return False, f"Unknown field: '{field}'."
         try:
             value = _FIELD_VALIDATORS[field](value)
         except ValidationError as e:
@@ -234,6 +237,8 @@ def approve_claim(claim_id, salary_batch):
     if not check_permission("approve_claim"):
         return False, "Access denied."
     cur = get_current_user()
+    if not cur:
+        return False, "Not logged in."
     try:
         salary_batch = validate_salary_batch(salary_batch)
     except ValidationError as e:
@@ -247,7 +252,7 @@ def approve_claim(claim_id, salary_batch):
         return False, f"Claim {claim_id} not found."
 
     c.execute("UPDATE claims SET approved = 'Approved', approved_by = ?, salary_batch = ? "
-              "WHERE id = ?", (cur["username"], encrypt_field(salary_batch), claim_id))
+              "WHERE id = ?", (encrypt_field(cur["username"]), encrypt_field(salary_batch), claim_id))
     conn.commit()
     conn.close()
     log_activity(cur["username"], "Claim approved",
@@ -260,6 +265,8 @@ def reject_claim(claim_id):
     if not check_permission("approve_claim"):
         return False, "Access denied."
     cur = get_current_user()
+    if not cur:
+        return False, "Not logged in."
     conn = get_connection()
     c = conn.cursor()
     c.execute("SELECT id FROM claims WHERE id = ?", (claim_id,))
@@ -268,7 +275,7 @@ def reject_claim(claim_id):
         return False, f"Claim {claim_id} not found."
 
     c.execute("UPDATE claims SET approved = 'Rejected', approved_by = ? WHERE id = ?",
-              (cur["username"], claim_id))
+              (encrypt_field(cur["username"]), claim_id))
     conn.commit()
     conn.close()
     log_activity(cur["username"], "Claim rejected", f"ID: {claim_id}")
@@ -280,6 +287,8 @@ def assign_salary_batch(claim_id, salary_batch):
     if not check_permission("assign_salary_batch"):
         return False, "Access denied."
     cur = get_current_user()
+    if not cur:
+        return False, "Not logged in."
     try:
         salary_batch = validate_salary_batch(salary_batch)
     except ValidationError as e:
