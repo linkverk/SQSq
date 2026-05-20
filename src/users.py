@@ -10,6 +10,10 @@ from validation import validate_username, validate_name, ValidationError
 from auth import get_current_user, check_permission, get_role_name
 from activity_log import log_activity
 
+# Explicit whitelist of profile columns that may appear in a dynamic UPDATE.
+# Column names are only ever taken from this frozenset; values are parameterised.
+_ALLOWED_PROFILE_COLUMNS = frozenset({"first_name", "last_name"})
+
 
 # ── helpers ──────────────────────────────────────────────────────────────
 def _generate_temporary_password():
@@ -202,11 +206,19 @@ def update_user_profile(username, first_name=None, last_name=None):
             conn.close()
             return False, "Insufficient permissions."
 
-    fields, params = [], []
+    pending = {}
     if first_name:
-        fields.append("first_name = ?"); params.append(first_name)
+        pending["first_name"] = first_name
     if last_name:
-        fields.append("last_name = ?"); params.append(last_name)
+        pending["last_name"] = last_name
+
+    fields, params = [], []
+    for col, val in pending.items():
+        if col not in _ALLOWED_PROFILE_COLUMNS:  # defence-in-depth: never trust the name
+            conn.close()
+            return False, f"Invalid field: {col}"
+        fields.append(f"{col} = ?")
+        params.append(val)
     params.append(uid)
 
     c.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", tuple(params))

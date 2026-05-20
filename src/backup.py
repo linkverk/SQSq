@@ -18,7 +18,10 @@ from activity_log import log_activity
 BACKUP_DIR = Path(__file__).parent / "backups"
 DATA_DIR = Path(__file__).parent / "data"
 
-_BACKUP_FILES = ["declaratieapp.db", "aes_key.bin", "fernet_key.bin", "system.log"]
+# The encryption keys are deliberately NOT bundled: shipping them alongside the
+# encrypted database would make the archive plaintext-equivalent. Keys stay in
+# src/data/, so same-system restore still works.
+_BACKUP_FILES = ["declaratieapp.db", "system.log"]
 
 
 # ── backup ───────────────────────────────────────────────────────────────

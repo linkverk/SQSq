@@ -25,11 +25,14 @@ from activity_log import log_activity
 
 # ── helpers ──────────────────────────────────────────────────────────────
 def _generate_employee_id():
-    """Generate a unique employee ID (EMP + 6 digits)."""
+    """Generate a unique numeric employee ID (7 digits; casus allows 2-10)."""
     conn = get_connection()
     c = conn.cursor()
     while True:
-        eid = "EMP" + "".join(secrets.choice(string.digits) for _ in range(6))
+        # First digit non-zero so the ID keeps a stable length.
+        eid = secrets.choice("123456789") + "".join(
+            secrets.choice(string.digits) for _ in range(6)
+        )
         c.execute("SELECT id FROM employees WHERE employee_id = ?", (eid,))
         if not c.fetchone():
             conn.close()
@@ -76,6 +79,12 @@ _VALIDATORS = {
     "identity_document_number": validate_identity_document_number,
     "bsn_number": validate_bsn_number,
 }
+
+
+# Explicit whitelist of columns that may appear in a dynamic UPDATE.
+# Column names are NEVER taken from user input verbatim — only names in
+# this frozenset can be interpolated into SQL (values stay parameterised).
+_ALLOWED_UPDATE_COLUMNS = frozenset(_VALIDATORS)
 
 
 def _encrypt_value(field, value):
@@ -171,6 +180,9 @@ def update_employee(employee_id, **updates):
         except ValidationError as e:
             conn.close()
             return False, f"Validation error for {field}: {e}"
+        if field not in _ALLOWED_UPDATE_COLUMNS:  # defence-in-depth: never trust the name
+            conn.close()
+            return False, f"Invalid field: {field}"
         fields.append(f"{field} = ?")
         params.append(_encrypt_value(field, value))
     params.append(employee_id)

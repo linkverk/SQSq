@@ -53,9 +53,13 @@ def is_null_byte_injected(value):
 
 
 def is_valid_username(username, allow_super_admin=False):
-    if username == "super_admin" and allow_super_admin:
-        return True
-    return _matches(username, "Username", r"[a-z_][a-z0-9_'.]{7,9}")
+    # Usernames are case-insensitive (casus): normalise before matching.
+    if not isinstance(username, str):
+        return False
+    normalized = username.lower()
+    if normalized == "super_admin":
+        return allow_super_admin
+    return _matches(normalized, "Username", r"[a-z_][a-z0-9_'.]{7,9}")
 
 
 def is_valid_password(password, username):
@@ -139,7 +143,8 @@ def is_valid_identity_document_type(doc_type):
 
 
 def is_valid_employee_id(eid):
-    return _matches(eid, "Employee ID", r"EMP\d{6}")
+    # Casus: Employee-ID is 2 to 10 digit characters.
+    return _matches(eid, "Employee ID", r"\d{2,10}")
     
 
 def is_valid_id(id_str):
@@ -153,7 +158,9 @@ def is_valid_two_chars(input_str):
 # ── public validators (return cleaned value or raise) ────────────────────
 def validate_username(username, allow_super_admin=False):
     if is_valid_username(username, allow_super_admin):
-        return username
+        # Return the case-insensitive (lower-cased) form so storage and
+        # deterministic-encryption lookups stay consistent.
+        return username.lower()
     raise ValidationError(
         "Username must be 8-10 chars, start with letter/underscore, "
         "contain only a-z 0-9 _ ' ."
@@ -269,7 +276,7 @@ def validate_bsn_number(bsn):
 def validate_employee_id(eid):
     if is_valid_employee_id(eid):
         return eid
-    raise ValidationError("Invalid employee ID. Expected format: EMP followed by 6 digits (e.g. EMP123456).")
+    raise ValidationError("Invalid employee ID. Expected 2 to 10 digits (e.g. 1234567).")
 
 
 def validate_id(id_str):
@@ -285,7 +292,9 @@ def validate_two_chars(input_str):
 
 
 def validate_nonempty(value, field_name="Input"):
-    """Ensure value is a non-empty string."""
+    """Ensure value is a non-empty string and return it (stripped)."""
     if isinstance(value, str):
         _check_null_bytes(value, field_name)
+        if value.strip():
+            return value
     raise ValidationError(f"{field_name} cannot be empty.")

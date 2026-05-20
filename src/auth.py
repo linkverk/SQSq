@@ -88,6 +88,10 @@ def require_permission(perm):
 
 # ── login / logout ───────────────────────────────────────────────────────
 def login(username, password):
+    # ── usernames are case-insensitive (casus): normalise first ──────
+    if isinstance(username, str):
+        username = username.lower()
+
     # ── whitelist: validate input format first ───────────────────────
     if is_valid_username(username, allow_super_admin=True) and is_valid_password(password, username):
 
