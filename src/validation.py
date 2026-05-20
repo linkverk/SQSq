@@ -53,7 +53,6 @@ def is_null_byte_injected(value):
 
 
 def is_valid_username(username, allow_super_admin=False):
-    # Usernames are case-insensitive (casus): normalise before matching.
     if not isinstance(username, str):
         return False
     normalized = username.lower()
@@ -143,7 +142,6 @@ def is_valid_identity_document_type(doc_type):
 
 
 def is_valid_employee_id(eid):
-    # Casus: Employee-ID is 2 to 10 digit characters.
     return _matches(eid, "Employee ID", r"\d{2,10}")
     
 
@@ -158,8 +156,6 @@ def is_valid_two_chars(input_str):
 # ── public validators (return cleaned value or raise) ────────────────────
 def validate_username(username, allow_super_admin=False):
     if is_valid_username(username, allow_super_admin):
-        # Return the case-insensitive (lower-cased) form so storage and
-        # deterministic-encryption lookups stay consistent.
         return username.lower()
     raise ValidationError(
         "Username must be 8-10 chars, start with letter/underscore, "

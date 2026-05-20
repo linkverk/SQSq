@@ -10,8 +10,6 @@ from validation import validate_username, validate_name, ValidationError
 from auth import get_current_user, check_permission, get_role_name
 from activity_log import log_activity
 
-# Explicit whitelist of profile columns that may appear in a dynamic UPDATE.
-# Column names are only ever taken from this frozenset; values are parameterised.
 _ALLOWED_PROFILE_COLUMNS = frozenset({"first_name", "last_name"})
 
 
@@ -214,7 +212,7 @@ def update_user_profile(username, first_name=None, last_name=None):
 
     fields, params = [], []
     for col, val in pending.items():
-        if col not in _ALLOWED_PROFILE_COLUMNS:  # defence-in-depth: never trust the name
+        if col not in _ALLOWED_PROFILE_COLUMNS:
             conn.close()
             return False, f"Invalid field: {col}"
         fields.append(f"{col} = ?")

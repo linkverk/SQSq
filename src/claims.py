@@ -67,9 +67,6 @@ _FIELD_VALIDATORS = {
 
 _ZIP_FIELDS = {"from_zip", "to_zip"}
 
-# Explicit whitelist of columns that may appear in a dynamic UPDATE.
-# Only names in this frozenset can be interpolated into SQL; values stay
-# parameterised, so untrusted input can never alter the query structure.
 _ALLOWED_UPDATE_COLUMNS = frozenset(_FIELD_VALIDATORS)
 
 
@@ -188,7 +185,7 @@ def update_claim(claim_id, **updates):
         except ValidationError as e:
             conn.close()
             return False, f"Validation error for {field}: {e}"
-        if field not in _ALLOWED_UPDATE_COLUMNS:  # defence-in-depth: never trust the name
+        if field not in _ALLOWED_UPDATE_COLUMNS:
             conn.close()
             return False, f"Unknown field: '{field}'."
         fields.append(f"{field} = ?")

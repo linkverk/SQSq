@@ -29,7 +29,6 @@ def _generate_employee_id():
     conn = get_connection()
     c = conn.cursor()
     while True:
-        # First digit non-zero so the ID keeps a stable length.
         eid = secrets.choice("123456789") + "".join(
             secrets.choice(string.digits) for _ in range(6)
         )
@@ -81,9 +80,6 @@ _VALIDATORS = {
 }
 
 
-# Explicit whitelist of columns that may appear in a dynamic UPDATE.
-# Column names are NEVER taken from user input verbatim — only names in
-# this frozenset can be interpolated into SQL (values stay parameterised).
 _ALLOWED_UPDATE_COLUMNS = frozenset(_VALIDATORS)
 
 
@@ -180,7 +176,7 @@ def update_employee(employee_id, **updates):
         except ValidationError as e:
             conn.close()
             return False, f"Validation error for {field}: {e}"
-        if field not in _ALLOWED_UPDATE_COLUMNS:  # defence-in-depth: never trust the name
+        if field not in _ALLOWED_UPDATE_COLUMNS:
             conn.close()
             return False, f"Invalid field: {field}"
         fields.append(f"{field} = ?")

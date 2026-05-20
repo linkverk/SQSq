@@ -88,7 +88,6 @@ def require_permission(perm):
 
 # ── login / logout ───────────────────────────────────────────────────────
 def login(username, password):
-    # ── usernames are case-insensitive (casus): normalise first ──────
     if isinstance(username, str):
         username = username.lower()
 
