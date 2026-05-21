@@ -5,7 +5,11 @@ All prompt functions loop until the user provides valid input or types 'exit'/'c
 """
 
 import re
-from validation import ValidationError, _check_null_bytes
+import getpass
+from validation import (
+    ValidationError, _check_null_bytes,
+    is_valid_username, is_valid_password,
+)
 
 
 class CancelInputException(Exception):
@@ -20,10 +24,13 @@ def _is_exit(value):
 
 
 # ── generic prompts ──────────────────────────────────────────────────────
-def prompt_with_validation(prompt_text, validator_func, allow_exit=True):
-    """Keep asking until validator passes (or user exits)."""
+def prompt_with_validation(prompt_text, validator_func, allow_exit=True, mask=False):
+    """Keep asking until validator passes (or user exits).
+
+    When *mask* is True the input is read with getpass so it is not echoed.
+    """
     while True:
-        value = input(prompt_text)
+        value = getpass.getpass(prompt_text) if mask else input(prompt_text)
         if allow_exit and _is_exit(value):
             raise CancelInputException()
         try:
@@ -49,11 +56,11 @@ def prompt_password_with_confirmation(prompt_text, validator_func,
                                       current_password=None, allow_exit=True):
     """Prompt for password + confirmation. Optionally reject reuse of current_password."""
     while True:
-        pw = prompt_with_validation(prompt_text, validator_func, allow_exit)
+        pw = prompt_with_validation(prompt_text, validator_func, allow_exit, mask=True)
         if current_password and pw == current_password:
             print("\n  New password must differ from the current one. Try again.\n")
             continue
-        confirm = input("Confirm password: ")
+        confirm = getpass.getpass("Confirm password: ")
         if allow_exit and _is_exit(confirm):
             raise CancelInputException()
         if not confirm:
@@ -126,32 +133,11 @@ def prompt_choice_from_list(prompt_text, options, allow_exit=True):
 
 # ── UI-layer quick validators ────────────────────────────────────────────
 def validate_username_input(username):
-    if not isinstance(username, str):
-        return False
-    try:
-        _check_null_bytes(username, "Username")
-    except ValidationError:
-        return False
-    if username == "super_admin":
-        return bool(re.match(r"^[a-z_][a-z0-9_'.]+$", username))
-    return bool(re.match(r"^[a-z_][a-z0-9_'.]{7,9}$", username))
+    return is_valid_username(username, allow_super_admin=True)
 
 
 def validate_password_input(password, username=""):
-    if not isinstance(password, str):
-        return False
-    try:
-        _check_null_bytes(password, "Password")
-    except ValidationError:
-        return False
-    min_len = 9 if username == "super_admin" else 12
-    return bool(
-        min_len <= len(password) <= 50
-        and re.search(r"[a-z]", password)
-        and re.search(r"[A-Z]", password)
-        and re.search(r"\d", password)
-        and re.search(r"[~!@#$%&_\-+=`|\\(){}[\]:;'<>,.?/]", password)
-    )
+    return is_valid_password(password, username)
 
 
 def validate_number_input(choice, length):

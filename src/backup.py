@@ -1,7 +1,9 @@
 """
 backup.py – Backup/restore and one-time restore-code management.
 
-Backups are ZIP files containing the database, encryption keys, and logs.
+Backups are ZIP files containing only the database (its sensitive data is already
+encrypted). Encryption keys and the activity log are deliberately excluded: the log is
+an audit trail that must survive restores and never ships inside a backup.
 Managers need a one-use restore code (issued by Super Admin) to restore.
 """
 
@@ -12,13 +14,13 @@ from pathlib import Path
 from datetime import datetime
 
 from database import get_connection, encrypt_field, decrypt_field
-from auth import get_current_user, check_permission
+from auth import get_current_user, check_permission, logout, current_user_active
 from activity_log import log_activity
 
 BACKUP_DIR = Path(__file__).parent / "backups"
 DATA_DIR = Path(__file__).parent / "data"
 
-_BACKUP_FILES = ["declaratieapp.db", "aes_key.bin", "fernet_key.bin", "system.log"]
+_BACKUP_FILES = ["declaratieapp.db"]
 
 
 # ── backup ───────────────────────────────────────────────────────────────
@@ -92,9 +94,15 @@ def restore_backup(backup_filename, restore_code=None):
 
         with zipfile.ZipFile(path, "r") as zf:
             for name in zf.namelist():
-                zf.extract(name, DATA_DIR)
+                if name in _BACKUP_FILES:
+                    zf.extract(name, DATA_DIR)
 
         log_activity(cur["username"], "Backup restored", f"File: {backup_filename}")
+
+        if not current_user_active():
+            logout()
+            return True, (f"Restored from: {backup_filename}. Your account is not present "
+                          "in this backup — session ended, please log in again.")
         return True, f"Restored from: {backup_filename}"
     except Exception as e:
         return False, f"Restore error: {e}"

@@ -5,6 +5,7 @@ Run this file to start the application.
 """
 
 import os
+import getpass
 #from turtle import bk
 
 from auth import login, logout, get_current_user, update_password
@@ -737,6 +738,8 @@ def backup_restore_menu():
             pause()
         elif ch == "3":
             _restore_backup_ui()
+            if not get_current_user():
+                return
         elif ch == "4" and is_sa:
             _generate_restore_code_ui()
         elif ch == "5" and is_sa:
@@ -773,6 +776,8 @@ def _restore_backup_ui():
     if prompt_confirmation(f"\n  Restore '{fname}'? This overwrites current data. (yes/no): "):
         ok, msg = restore_backup(fname, code)
         print(f"\n{msg}")
+        if not get_current_user():
+            print("\n  Session ended — please log in again.")
     pause()
 
 
@@ -840,7 +845,7 @@ def update_my_password_ui():
     u = get_current_user()
     if not u:
         return
-    cur_pw = input("\nCurrent password: ")
+    cur_pw = getpass.getpass("\nCurrent password: ")
     if not cur_pw:
         print("\n  Cannot be empty."); pause(); return
     if not validate_password_input(cur_pw, u["username"]):
@@ -946,7 +951,7 @@ def login_screen():
     clear(); header("DECLARATIEAPP – LOGIN")
     print("\n  Hard-coded Super Admin: super_admin / Admin_123?\n")
     un = input("Username: ")
-    pw = input("Password: ")
+    pw = getpass.getpass("Password: ")
 
     ok, msg = login(un, pw)
     if ok:

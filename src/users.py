@@ -67,7 +67,8 @@ def _create_user(username, first_name, last_name, role, password=None, employee_
     c.execute(
         "INSERT INTO users (username, password_hash, role, first_name, last_name, "
         "employee_id, must_change_password) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        (enc, hash_password(password), role, first_name, last_name, employee_id, 1),
+        (enc, hash_password(password), encrypt_username(role),
+         encrypt_username(first_name), encrypt_username(last_name), employee_id, 1),
     )
     conn.commit()
     conn.close()
@@ -106,7 +107,7 @@ def delete_user(username):
         conn.close()
         return False, f"User '{username}' not found."
 
-    uid, target_role = row[0], row[1]
+    uid, target_role = row[0], decrypt_username(row[1])
 
     if target_role == "manager" and not check_permission("delete_manager"):
         conn.close()
@@ -147,7 +148,7 @@ def reset_user_password(username):
         conn.close()
         return False, f"User '{username}' not found.", None
 
-    uid, target_role = row
+    uid, target_role = row[0], decrypt_username(row[1])
     if target_role == "manager" and not check_permission("reset_manager_password"):
         conn.close()
         return False, "Only Super Admin can reset Manager passwords.", None
@@ -191,7 +192,7 @@ def update_user_profile(username, first_name=None, last_name=None):
         conn.close()
         return False, f"User '{username}' not found."
 
-    uid, target_role = row
+    uid, target_role = row[0], decrypt_username(row[1])
     is_self = username == cur["username"]
 
     if not is_self:
@@ -204,9 +205,9 @@ def update_user_profile(username, first_name=None, last_name=None):
 
     fields, params = [], []
     if first_name:
-        fields.append("first_name = ?"); params.append(first_name)
+        fields.append("first_name = ?"); params.append(encrypt_username(first_name))
     if last_name:
-        fields.append("last_name = ?"); params.append(last_name)
+        fields.append("last_name = ?"); params.append(encrypt_username(last_name))
     params.append(uid)
 
     c.execute(f"UPDATE users SET {', '.join(fields)} WHERE id = ?", tuple(params))
@@ -225,8 +226,10 @@ def list_all_users():
     rows = c.fetchall()
     conn.close()
     return [
-        {"username": decrypt_username(r[0]), "role": r[1],
-         "role_name": get_role_name(r[1]), "first_name": r[2],
-         "last_name": r[3], "created_at": r[4]}
+        {"username": decrypt_username(r[0]),
+         "role": decrypt_username(r[1]),
+         "role_name": get_role_name(decrypt_username(r[1])),
+         "first_name": decrypt_username(r[2]),
+         "last_name": decrypt_username(r[3]), "created_at": r[4]}
         for r in rows
     ]

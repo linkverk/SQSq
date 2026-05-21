@@ -115,6 +115,9 @@ def login(username, password):
         if user:
             uid, enc_un, pw_hash, role, fn, ln, mcp, eid = user
             un = decrypt_username(enc_un)
+            role = decrypt_username(role)
+            fn = decrypt_username(fn)
+            ln = decrypt_username(ln)
 
             if verify_password(password, un, pw_hash):
                 # ── successful login: reset failed attempts ──────────
@@ -235,10 +238,12 @@ def get_user_by_username(username):
     conn.close()
     if not row:
         return None
+    role = decrypt_username(row[2])
     return {
         "id": row[0], "username": decrypt_username(row[1]),
-        "role": row[2], "role_name": get_role_name(row[2]),
-        "first_name": row[3], "last_name": row[4], "created_at": row[5],
+        "role": role, "role_name": get_role_name(role),
+        "first_name": decrypt_username(row[3]),
+        "last_name": decrypt_username(row[4]), "created_at": row[5],
     }
 
 
@@ -247,15 +252,36 @@ def list_users_by_role(role=None):
     c = conn.cursor()
     if role:
         c.execute("SELECT id, username, role, first_name, last_name, created_at "
-                   "FROM users WHERE role = ? ORDER BY created_at DESC", (role,))
+                   "FROM users WHERE role = ? ORDER BY created_at DESC",
+                   (encrypt_username(role),))
     else:
         c.execute("SELECT id, username, role, first_name, last_name, created_at "
                    "FROM users ORDER BY created_at DESC")
     rows = c.fetchall()
     conn.close()
     return [
-        {"id": r[0], "username": decrypt_username(r[1]), "role": r[2],
-         "role_name": get_role_name(r[2]), "first_name": r[3],
-         "last_name": r[4], "created_at": r[5]}
+        {"id": r[0], "username": decrypt_username(r[1]),
+         "role": decrypt_username(r[2]),
+         "role_name": get_role_name(decrypt_username(r[2])),
+         "first_name": decrypt_username(r[3]),
+         "last_name": decrypt_username(r[4]), "created_at": r[5]}
         for r in rows
     ]
+
+
+def current_user_active():
+    """Return True if the logged-in user still exists in the database.
+
+    Re-queries the users table directly (bypassing the in-memory session) so it
+    reflects a freshly restored database. Used to end the session when a restore
+    removes the current user's account.
+    """
+    if not _session["logged_in"]:
+        return False
+    conn = get_connection()
+    c = conn.cursor()
+    c.execute("SELECT id FROM users WHERE username = ?",
+              (encrypt_username(_session["username"]),))
+    row = c.fetchone()
+    conn.close()
+    return row is not None

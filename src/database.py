@@ -192,7 +192,10 @@ def init_super_admin():
         c.execute(
             "INSERT INTO users (username, password_hash, role, first_name, last_name) "
             "VALUES (?, ?, ?, ?, ?)",
-            (enc, hash_password(SUPER_ADMIN_PASSWORD), "super_admin", "Super", "Administrator"),
+            (enc, hash_password(SUPER_ADMIN_PASSWORD),
+             encrypt_username("super_admin"),
+             encrypt_username("Super"),
+             encrypt_username("Administrator")),
         )
         conn.commit()
         print(f"  Super Admin created  (user: {SUPER_ADMIN_USERNAME} / pass: {SUPER_ADMIN_PASSWORD})")
