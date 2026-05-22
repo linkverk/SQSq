@@ -1,4 +1,4 @@
-"""Tests for backup.py — key exclusion (D1), restore round-trip, one-use codes."""
+"""Tests for backup.py — key exclusion, restore round-trip, one-use codes."""
 
 import zipfile
 
@@ -15,8 +15,8 @@ def test_backup_excludes_encryption_keys(as_super_admin):
     with zipfile.ZipFile(backup.BACKUP_DIR / fname) as zf:
         names = zf.namelist()
     assert "declaratieapp.db" in names
-    assert "aes_key.bin" not in names      # D1
-    assert "fernet_key.bin" not in names   # D1
+    assert "aes_key.bin" not in names
+    assert "fernet_key.bin" not in names
 
 
 def test_super_admin_restore_roundtrip(as_super_admin):

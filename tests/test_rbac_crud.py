@@ -1,4 +1,4 @@
-"""Role-based CRUD, salary-batch lock, and SQL-injection safety (B1)."""
+"""Role-based CRUD, salary-batch lock, and SQL-injection safety."""
 
 import auth
 from claims import add_claim, update_claim, approve_claim, search_claims
@@ -59,7 +59,7 @@ def test_super_admin_updates_manager_profile(manager):
     assert ok, msg
 
 
-# ── SQL-injection safety (B1 column whitelist + parameterised values) ──────
+# ── SQL-injection safety (column whitelist + parameterised values) ──────
 def test_update_employee_rejects_malicious_column(employee):
     _, eid = employee
     auth.login(*SUPER)
