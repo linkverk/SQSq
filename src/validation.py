@@ -288,4 +288,6 @@ def validate_nonempty(value, field_name="Input"):
     """Ensure value is a non-empty string."""
     if isinstance(value, str):
         _check_null_bytes(value, field_name)
+        if value.strip():
+            return value
     raise ValidationError(f"{field_name} cannot be empty.")

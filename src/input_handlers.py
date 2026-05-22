@@ -75,8 +75,6 @@ def prompt_password_with_confirmation(prompt_text, validator_func,
 def prompt_menu_choice(prompt_text, min_choice, max_choice, allow_exit=True):
     while True:
         value = input(prompt_text)
-        if not validate_number_input(value, max_choice):
-                pass
         if allow_exit and _is_exit(value):
             raise CancelInputException()
         try:
